@@ -12,6 +12,7 @@
 	<version>${project.parent.version}</version>
 	<name>Project Storage</name>
 	<packaging>jar</packaging>
+	<url>https://github.com/wuxiatech/wuxia-project-storage.git</url>
 	<dependencies>
 		<dependency>
 			<groupId>cn.wuxia.project</groupId>
