@@ -90,6 +90,39 @@ public class QiniuUploader {
     }
 
     /**
+     * 上传文件
+     *
+     * @param file
+     * @param fileSavePath
+     * @param replaceFileKey 被覆盖的文件key
+     * @return
+     * @throws QiniuException
+     */
+    public String uploadForce(File file, String fileSavePath, String replaceFileKey) throws QiniuException {
+        //默认不指定key的情况下，以文件内容的hash值作为文件名
+        Response response = uploadManager.put(file, fileSavePath, getUpToken(replaceFileKey));
+        //解析上传成功的结果
+        DefaultPutRet putRet = new Gson().fromJson(response.bodyString(), DefaultPutRet.class);
+        return putRet.key;
+    }
+
+    /**
+     * 上传文件,如果存在则会被覆盖
+     *
+     * @param file
+     * @param fileSavePath
+     * @return
+     * @throws QiniuException
+     */
+    public String uploadForce(File file, String fileSavePath) throws QiniuException {
+        //默认不指定key的情况下，以文件内容的hash值作为文件名
+        Response response = uploadManager.put(file, fileSavePath, getUpToken(fileSavePath));
+        //解析上传成功的结果
+        DefaultPutRet putRet = new Gson().fromJson(response.bodyString(), DefaultPutRet.class);
+        return putRet.key;
+    }
+
+    /**
      * 上传文件流
      *
      * @param inputStream
@@ -99,6 +132,21 @@ public class QiniuUploader {
     public String upload(InputStream inputStream, String fileSavePath) throws QiniuException {
         //默认不指定key的情况下，以文件内容的hash值作为文件名
         Response response = uploadManager.put(inputStream, fileSavePath, getUpToken(), null, "application/octet-stream");
+        //解析上传成功的结果
+        DefaultPutRet putRet = new Gson().fromJson(response.bodyString(), DefaultPutRet.class);
+        return putRet.key;
+    }
+
+    /**
+     * 上传文件流
+     *
+     * @param inputStream
+     * @return
+     * @throws QiniuException
+     */
+    public String uploadForce(InputStream inputStream, String fileSavePath) throws QiniuException {
+        //默认不指定key的情况下，以文件内容的hash值作为文件名
+        Response response = uploadManager.put(inputStream, fileSavePath, getUpToken(fileSavePath), null, "application/octet-stream");
         //解析上传成功的结果
         DefaultPutRet putRet = new Gson().fromJson(response.bodyString(), DefaultPutRet.class);
         return putRet.key;
@@ -124,7 +172,9 @@ public class QiniuUploader {
         return putRet.key;
     }
 
-    //简单上传，使用默认策略，只需要设置上传的空间名就可以了
+    /**
+     * 简单上传，使用默认策略，只需要设置上传的空间名就可以了
+     */
     public String getUpToken() {
         StringMap putPolicy = new StringMap();
 //        putPolicy.put("callbackUrl", "http://api.example.com/qiniu/upload/callback");
@@ -133,6 +183,18 @@ public class QiniuUploader {
         Auth auth = Auth.create(config.getAccessKey(), config.getSecretKey());
         return auth.uploadToken(config.getBucket(), null, expireSeconds, putPolicy);
 
+    }
+
+    /**
+     * 覆盖上传
+     */
+    public String getUpToken(String replaceFileKey) {
+        StringMap putPolicy = new StringMap();
+//        putPolicy.put("callbackUrl", "http://api.example.com/qiniu/upload/callback");
+//        putPolicy.put("callbackBody", "key=$(key)&hash=$(etag)&bucket=$(bucket)&fsize=$(fsize)");
+        long expireSeconds = 3600;
+        Auth auth = Auth.create(config.getAccessKey(), config.getSecretKey());
+        return auth.uploadToken(config.getBucket(), replaceFileKey, expireSeconds, putPolicy);
     }
 
     /**

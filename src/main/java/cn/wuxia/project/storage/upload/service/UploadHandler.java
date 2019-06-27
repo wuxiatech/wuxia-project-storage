@@ -44,6 +44,34 @@ public class UploadHandler {
         }
     }
 
+    public UploadRespone uploadToQiniuOss(File file, String fileSavePath, boolean forceSave) throws UploadException {
+        if (!forceSave) {
+            return uploadToQiniuOss(file, fileSavePath);
+        }
+        if (qiniuUploader == null) {
+            qiniuUploader = QiniuUploader.build();
+        }
+
+        try {
+            String key = qiniuUploader.uploadForce(file, fileSavePath);
+            return new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.getConfig().getBucket());
+        } catch (QiniuException e) {
+            throw new UploadException(e.getMessage());
+        }
+    }
+
+    public UploadRespone uploadToQiniuOss(File file, String fileSavePath, String replaceOriginalFileKey) throws UploadException {
+        if (qiniuUploader == null) {
+            qiniuUploader = QiniuUploader.build();
+        }
+
+        try {
+            String key = qiniuUploader.uploadForce(file, fileSavePath, replaceOriginalFileKey);
+            return new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.getConfig().getBucket());
+        } catch (QiniuException e) {
+            throw new UploadException(e.getMessage());
+        }
+    }
 
     public UploadRespone uploadToAliOss(InputStream inputStream, String fileSavePath) throws UploadException {
         if (ossUploader == null) {
@@ -59,6 +87,24 @@ public class UploadHandler {
 
 
     public UploadRespone uploadToQiniuOss(InputStream inputStream, String fileSavePath) throws UploadException {
+        if (qiniuUploader == null) {
+            qiniuUploader = QiniuUploader.build();
+        }
+
+        try {
+            String key = qiniuUploader.upload(inputStream, fileSavePath);
+
+            UploadRespone uploadRespone = new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.getConfig().getBucket());
+            return uploadRespone;
+        } catch (QiniuException e) {
+            throw new UploadException(e.getMessage());
+        }
+    }
+
+    public UploadRespone uploadToQiniuOss(InputStream inputStream, String fileSavePath, boolean forceSave) throws UploadException {
+        if (!forceSave) {
+            return uploadToQiniuOss(inputStream, fileSavePath);
+        }
         if (qiniuUploader == null) {
             qiniuUploader = QiniuUploader.build();
         }
