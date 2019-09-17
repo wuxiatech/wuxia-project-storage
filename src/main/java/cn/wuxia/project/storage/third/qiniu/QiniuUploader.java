@@ -1,16 +1,20 @@
 package cn.wuxia.project.storage.third.qiniu;
 
+import cn.wuxia.common.util.DateUtil;
 import cn.wuxia.common.util.PropertiesUtils;
+import cn.wuxia.common.util.StringUtil;
 import cn.wuxia.project.storage.third.alioss.OssUploader;
 import com.google.gson.Gson;
 import com.qiniu.common.QiniuException;
 import com.qiniu.common.Zone;
 import com.qiniu.http.Response;
+import com.qiniu.storage.BucketManager;
 import com.qiniu.storage.Configuration;
 import com.qiniu.storage.UploadManager;
 import com.qiniu.storage.model.DefaultPutRet;
 import com.qiniu.util.Auth;
 import com.qiniu.util.StringMap;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,14 +23,18 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.Properties;
 
 public class QiniuUploader {
     private final Logger logger = LoggerFactory.getLogger(OssUploader.class);
     static Properties properties = PropertiesUtils.loadProperties("classpath:qiniu.config.properties", "classpath:properties/qiniu.config.properties");
-    static String callbackUrl = properties.getProperty("qiniu.callbackUrl");
+    public static String accessDomain = properties.getProperty("qiniu.domain");
+    public static boolean isPrivate = BooleanUtils.toBoolean(properties.getProperty("qiniu.bucket.private"));
     private UploadManager uploadManager;
+    private BucketManager bucketManager;
     private QiniuConfig config;
+    private Auth auth;
 
     public QiniuUploader() {
 
@@ -46,6 +54,8 @@ public class QiniuUploader {
         }
         Configuration cfg = new Configuration(zone);
         this.uploadManager = new UploadManager(cfg);
+        this.auth = Auth.create(config.getAccessKey(), config.getSecretKey());
+        this.bucketManager = new BucketManager(auth, cfg);
     }
 
 
@@ -153,7 +163,13 @@ public class QiniuUploader {
     }
 
     public void delete(String filePath) {
-
+        try {
+            bucketManager.delete(config.getBucket(), filePath);
+        } catch (QiniuException ex) {
+            //如果遇到异常，说明删除失败
+            System.err.println(ex.code());
+            System.err.println(ex.response.toString());
+        }
     }
 
     /**
@@ -177,10 +193,11 @@ public class QiniuUploader {
      */
     public String getUpToken() {
         StringMap putPolicy = new StringMap();
-//        putPolicy.put("callbackUrl", "http://api.example.com/qiniu/upload/callback");
-//        putPolicy.put("callbackBody", "key=$(key)&hash=$(etag)&bucket=$(bucket)&fsize=$(fsize)");
+/**
+ * 自定义返回格式
+ */
+//        putPolicy.put("returnBody", "{\"key\":\"$(key)\",\"hash\":\"$(etag)\",\"bucket\":\"$(bucket)\",\"fsize\":$(fsize)}");
         long expireSeconds = 3600;
-        Auth auth = Auth.create(config.getAccessKey(), config.getSecretKey());
         return auth.uploadToken(config.getBucket(), null, expireSeconds, putPolicy);
 
     }
@@ -190,10 +207,11 @@ public class QiniuUploader {
      */
     public String getUpToken(String replaceFileKey) {
         StringMap putPolicy = new StringMap();
-//        putPolicy.put("callbackUrl", "http://api.example.com/qiniu/upload/callback");
-//        putPolicy.put("callbackBody", "key=$(key)&hash=$(etag)&bucket=$(bucket)&fsize=$(fsize)");
+        /**
+         * 自定义返回格式
+         */
+//        putPolicy.put("returnBody", "{\"key\":\"$(key)\",\"hash\":\"$(etag)\",\"bucket\":\"$(bucket)\",\"fsize\":$(fsize)}");
         long expireSeconds = 3600;
-        Auth auth = Auth.create(config.getAccessKey(), config.getSecretKey());
         return auth.uploadToken(config.getBucket(), replaceFileKey, expireSeconds, putPolicy);
     }
 
@@ -204,17 +222,43 @@ public class QiniuUploader {
      * @return
      */
     public static String url(String fileName) {
-        String encodedFileName = null;
+        String encodedFileName = fileName;
         try {
-            encodedFileName = URLEncoder.encode(fileName, "utf-8");
+            encodedFileName = URLEncoder.encode(fileName, "utf-8").replace("+", "%20");
         } catch (UnsupportedEncodingException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        String finalUrl = String.format("%s/%s", callbackUrl, encodedFileName);
+        String finalUrl = String.format("%s/%s", accessDomain, encodedFileName);
         System.out.println(finalUrl);
         return finalUrl;
     }
 
+    /**
+     * 增加支持private bucket 的支持1天的有效期
+     *
+     * @param key
+     * @return
+     */
+    public String privateDownloadUrl(String key) {
+        return privateDownloadUrl(key, DateUtil.addDays(new Date(), 1));
+    }
 
+    /**
+     * 增加支持private bucket 的支持1天的有效期
+     *
+     * @param key
+     * @return
+     */
+    public String privateDownloadUrl(String key, Date limitDate) {
+        if (!isPrivate) {
+            return url(key);
+        }
+        long expires = (limitDate.getTime() - System.currentTimeMillis()) / 1000L;
+        if (StringUtil.startsWithIgnoreCase(key, "http://") || StringUtil.startsWithIgnoreCase(key, "https://")) {
+            return auth.privateDownloadUrl(key, expires);
+        } else {
+            return auth.privateDownloadUrl(accessDomain + "/" + key, expires);
+        }
+    }
 }

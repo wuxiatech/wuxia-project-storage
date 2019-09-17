@@ -1,8 +1,12 @@
 package cn.wuxia.project.storage.third.alioss;
 
 import cn.wuxia.aliyun.components.oss.OSSUtils;
+import cn.wuxia.common.util.DateUtil;
+import cn.wuxia.common.util.EncodeUtils;
 import cn.wuxia.common.util.PropertiesUtils;
 import cn.wuxia.common.util.StringUtil;
+import com.aliyun.oss.model.AccessControlList;
+import com.aliyun.oss.model.CannedAccessControlList;
 import com.qiniu.common.QiniuException;
 import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
@@ -11,14 +15,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
 public class OssUploader {
     private final Logger logger = LoggerFactory.getLogger(OssUploader.class);
     static Properties properties = PropertiesUtils.loadProperties("classpath:oss.config.properties", "classpath:properties/oss.config.properties");
-    static String callbackUrl = properties.getProperty("qiniu.callbackUrl");
+    public static String accessDomain = properties.getProperty("oss.domain");
     private OSSUtils ossClient;
     private OssConfig config;
 
@@ -114,10 +120,50 @@ public class OssUploader {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        String finalUrl = String.format("%s/%s", callbackUrl, encodedFileName);
+        String finalUrl = String.format("%s/%s", accessDomain, encodedFileName);
         System.out.println(finalUrl);
         return finalUrl;
     }
 
+    public String privateDownloadUrl(String key) {
+        return privateDownloadUrl(key, DateUtil.addHours(new Date(), 1));
+    }
 
+    /**
+     * 增加支持private bucket 的支持1天的有效期
+     *
+     * @param key
+     * @return
+     */
+    public String privateDownloadUrl(String key, Date limitDate) {
+        if (StringUtil.startsWithIgnoreCase(key, "http://")) {
+            key = StringUtil.substringAfter(key, "http://");
+            key = StringUtil.substringAfter(key, "/");
+        } else if (StringUtil.startsWithIgnoreCase(key, "https://")) {
+            key = StringUtil.substringAfter(key, "https://");
+            key = StringUtil.substringAfter(key, "/");
+        } else if (StringUtil.startsWith(key, "/")) {
+            key = StringUtil.substringAfter(key, "/");
+        }
+
+        String bucketName = getConfig().getBucketName();
+        AccessControlList acl = getOssClient().client.getBucketAcl(bucketName);
+        URI uri = getOssClient().client.getEndpoint();
+        String domainUri = uri.getScheme() + "://" + bucketName + "." + uri.getAuthority();
+        if (acl.getCannedACL() == CannedAccessControlList.Private) {
+            String url = EncodeUtils.urlDecode(getOssClient().client.generatePresignedUrl(bucketName, key, limitDate).toString());
+            if (StringUtil.isBlank(accessDomain)) {
+                return url;
+            } else {
+                return StringUtil.replace(url, domainUri, accessDomain);
+            }
+        } else {
+            if (StringUtil.isBlank(accessDomain)) {
+                return domainUri + "/" + key;
+            } else {
+                return accessDomain + "/" + key;
+            }
+        }
+
+    }
 }

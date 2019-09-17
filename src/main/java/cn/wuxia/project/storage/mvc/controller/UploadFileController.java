@@ -3,41 +3,40 @@
  */
 package cn.wuxia.project.storage.mvc.controller;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import cn.wuxia.project.storage.core.bean.FileUploadBean;
-import cn.wuxia.project.storage.core.enums.UploadFileCategoryEnum;
-import cn.wuxia.project.storage.core.model.UserUploadGroup;
-import cn.wuxia.project.storage.core.model.UserUploadGroupRef;
-import cn.wuxia.project.storage.core.service.UploadFileService;
-import cn.wuxia.project.storage.core.service.UserUploadGroupRefService;
-import cn.wuxia.project.storage.core.service.UserUploadGroupService;
-import cn.wuxia.project.basic.mvc.controller.BaseController;
-import cn.wuxia.project.common.security.UserContextUtil;
-import org.apache.commons.io.IOUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
-
-import com.google.common.collect.Maps;
-
 import cn.wuxia.common.exception.AppWebException;
 import cn.wuxia.common.util.FileUtil;
 import cn.wuxia.common.util.JsonUtil;
 import cn.wuxia.common.util.StringUtil;
 import cn.wuxia.common.web.httpclient.HttpClientException;
 import cn.wuxia.common.web.httpclient.HttpClientUtil;
+import cn.wuxia.project.basic.mvc.controller.BaseController;
+import cn.wuxia.project.common.security.UserContextUtil;
+import cn.wuxia.project.storage.core.bean.FileUploadBean;
+import cn.wuxia.project.storage.core.enums.UploadFileCategoryEnum;
+import cn.wuxia.project.storage.core.model.UserUploadGroup;
+import cn.wuxia.project.storage.core.model.UserUploadGroupRef;
+import cn.wuxia.project.storage.core.service.UploadFileInfoService;
+import cn.wuxia.project.storage.core.service.UserUploadGroupRefService;
+import cn.wuxia.project.storage.core.service.UserUploadGroupService;
+import cn.wuxia.project.storage.core.service.impl.FileUploadService;
+import cn.wuxia.project.storage.upload.UploadException;
+import com.google.common.collect.Maps;
+import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.net.URLEncoder;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Upload File Controller.
@@ -49,8 +48,9 @@ import cn.wuxia.common.web.httpclient.HttpClientUtil;
 @RequestMapping("/upload/*")
 public class UploadFileController extends BaseController {
     @Autowired
-    private UploadFileService uploadFileService;
-
+    private UploadFileInfoService uploadFileService;
+    @Autowired
+    private FileUploadService fileUploadService;
     @Autowired
     private UserUploadGroupRefService userUploadGroupRefService;
 
@@ -69,7 +69,25 @@ public class UploadFileController extends BaseController {
     @RequestMapping(value = "uploadFile", method = RequestMethod.POST)
     @ResponseBody
     public FileUploadBean uploadFile(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        FileUploadBean fileUploadBean = uploadFileService.uploadFile(request, null);
+        String uploadCategory = StringUtil.isNotBlankPlus(request.getParameter("uploadCategory")) ? request.getParameter("uploadCategory")
+                : request.getAttribute("uploadCategory") + "";
+        MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+
+        Iterator<String> it = multipartRequest.getFileNames();
+        String fileInputName = it.next();
+
+        CommonsMultipartFile uploadFile = (CommonsMultipartFile) multipartRequest.getFile(fileInputName);
+
+        String uploadFileSetId = request.getParameter("uploadFileSetId");
+
+        if (uploadFile == null || uploadFile.isEmpty()) {
+            logger.error("the request has no uploadFile!");
+            return null;
+        }
+
+        String fileName = uploadFile.getOriginalFilename();
+        UploadFileCategoryEnum categoryEnum = StringUtil.isNotBlankPlus(uploadCategory) ? UploadFileCategoryEnum.valueOf(uploadCategory) : UploadFileCategoryEnum.temp;
+        FileUploadBean fileUploadBean = fileUploadService.uploadFile(uploadFile.getInputStream(), fileName, categoryEnum, uploadFileSetId);
         fileUploadBean.setOldFileName(URLEncoder.encode(fileUploadBean.getOldFileName(), "utf-8"));
         return fileUploadBean;
     }
@@ -107,12 +125,20 @@ public class UploadFileController extends BaseController {
      */
     @RequestMapping("/ueditor/upload")
     @ResponseBody
-    public Map<String, Object> upload(HttpServletRequest request, HttpServletResponse response, String action) throws IOException {
+    public Map<String, Object> upload(HttpServletRequest request, HttpServletResponse response, String action) {
         String userid = UserContextUtil.getId();
         if (StringUtil.equals("uploadimage", action)) {
-            request.setAttribute("uploadCategory", UploadFileCategoryEnum.gallery);
-            FileUploadBean fileUploadBean = uploadFileService.uploadFile(request, "file[]");
+            MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+            CommonsMultipartFile uploadFile = (CommonsMultipartFile) multipartRequest.getFile("file[]");
+            FileUploadBean fileUploadBean = null;
             Map<String, Object> result = Maps.newHashMap();
+            try (InputStream inputStream = uploadFile.getInputStream();) {
+                fileUploadBean = fileUploadService.uploadFile(inputStream, uploadFile.getOriginalFilename(), UploadFileCategoryEnum.gallery, null);
+            } catch (IOException | UploadException e) {
+                result.put("state", "FAIL");
+                return result;
+            }
+
             result.put("name", fileUploadBean.getNewFileName());
             result.put("originalName", fileUploadBean.getOldFileName());
             result.put("size", fileUploadBean.getFileSize());
@@ -148,9 +174,16 @@ public class UploadFileController extends BaseController {
             result.put("total", list.size());
             return result;
         } else if (StringUtil.equals("uploadfile", action)) {
-            request.setAttribute("uploadCategory", UploadFileCategoryEnum.file);
-            FileUploadBean fileUploadBean = uploadFileService.uploadFile(request, "upfile");
+            MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+            CommonsMultipartFile uploadFile = (CommonsMultipartFile) multipartRequest.getFile("upfile");
+            FileUploadBean fileUploadBean = null;
             Map<String, Object> result = Maps.newHashMap();
+            try (InputStream inputStream = uploadFile.getInputStream();) {
+                fileUploadBean = fileUploadService.uploadFile(inputStream, uploadFile.getOriginalFilename(), UploadFileCategoryEnum.file, null);
+            } catch (IOException | UploadException e) {
+                result.put("state", "FAIL");
+                return result;
+            }
             result.put("name", fileUploadBean.getOldFileName());
             result.put("originalName", fileUploadBean.getOldFileName());
             result.put("size", fileUploadBean.getFileSize());
@@ -170,9 +203,16 @@ public class UploadFileController extends BaseController {
             }
             return result;
         } else if (StringUtil.equals("uploadvideo", action)) {
-            request.setAttribute("uploadCategory", UploadFileCategoryEnum.video);
-            FileUploadBean fileUploadBean = uploadFileService.uploadFile(request, "upfile");
             Map<String, Object> result = Maps.newHashMap();
+            MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+            CommonsMultipartFile uploadFile = (CommonsMultipartFile) multipartRequest.getFile("upfile");
+            FileUploadBean fileUploadBean = null;
+            try (InputStream inputStream = uploadFile.getInputStream();) {
+                fileUploadBean = fileUploadService.uploadFile(inputStream, uploadFile.getOriginalFilename(), UploadFileCategoryEnum.video, null);
+            } catch (IOException | UploadException e) {
+                result.put("state", "FAIL");
+                return result;
+            }
             result.put("name", fileUploadBean.getOldFileName());
             result.put("originalName", fileUploadBean.getOldFileName());
             result.put("size", fileUploadBean.getFileSize());
@@ -196,7 +236,11 @@ public class UploadFileController extends BaseController {
             File f = FileUtil.getFile(path + "/resources/script/ueditor/upload.config.json");
             InputStream inputStream = null;
             if (f != null && f.exists()) {
-                inputStream = new FileInputStream(f);
+                try {
+                    inputStream = new FileInputStream(f);
+                } catch (FileNotFoundException e) {
+                    throw new AppWebException(e.getMessage());
+                }
             } else {
                 try {
                     inputStream = HttpClientUtil.download(getServerHttpPath() + "/commons/js/ueditor/upload.config.json");
@@ -204,9 +248,15 @@ public class UploadFileController extends BaseController {
                     throw new AppWebException(e.getMessage());
                 }
             }
-            String config = IOUtils.toString(inputStream);
-            Map<String, Object> c = JsonUtil.fromJson(config);
-            return c;
+            try {
+                String config = IOUtils.toString(inputStream, "UTF-8");
+                Map<String, Object> c = JsonUtil.fromJson(config);
+                return c;
+            } catch (IOException e) {
+                return Maps.newHashMap();
+            }
+
+
         }
     }
 }

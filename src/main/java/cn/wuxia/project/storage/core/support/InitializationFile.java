@@ -27,7 +27,7 @@ public class InitializationFile {
             "classpath:qiniu.config.properties");
 
     // 获取当前程序发布盘符
-    public static String driveUrl = System.getProperty("java.io.temp");
+    public static String driveUrl = System.getProperty("java.io.tmpdir");
 
     /**
      * 当使用下载时需要将 driveUrl 替换为 downloadUrl
@@ -36,11 +36,11 @@ public class InitializationFile {
 
 
     //判断是否保存到oss上，若需要保存到os则不保存到服务器
-    public final static boolean isPutToAliOss = BooleanUtils.toBooleanDefaultIfNull(BooleanUtils.toBooleanObject(propertie.getProperty("isPutToAliOss")), false);
+    public final static boolean isPutToAliOss = BooleanUtils.toBoolean(propertie.getProperty("isPutToAliOss"));
 
     //判断是否保存到oss上，若需要保存到os则不保存到服务器
     public final static boolean isPutToQiniuOss =
-            BooleanUtils.toBooleanDefaultIfNull(BooleanUtils.toBooleanObject(propertie.getProperty("isPutToQiniuOss")), false);
+            BooleanUtils.toBoolean(propertie.getProperty("isPutToQiniuOss"));
 
     // 初始化各个文件夹
     static {

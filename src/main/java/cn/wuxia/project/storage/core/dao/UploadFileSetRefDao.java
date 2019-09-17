@@ -1,17 +1,12 @@
 package cn.wuxia.project.storage.core.dao;
 
-import java.util.List;
-import java.util.Map;
-
-import cn.wuxia.project.storage.core.bean.FileInfoDto;
-import cn.wuxia.project.storage.core.model.UploadFileInfo;
+import cn.wuxia.common.util.StringUtil;
+import cn.wuxia.project.basic.core.common.BaseCommonDao;
 import cn.wuxia.project.storage.core.model.UploadFileSetRef;
+import com.google.common.collect.Maps;
 import org.springframework.stereotype.Repository;
 
-import com.google.common.collect.Maps;
-
-import cn.wuxia.project.basic.core.common.BaseCommonDao;
-import cn.wuxia.common.util.StringUtil;
+import java.util.Map;
 
 /**
  * [ticket id] Description of the class
@@ -21,38 +16,12 @@ import cn.wuxia.common.util.StringUtil;
 @Repository
 public class UploadFileSetRefDao extends BaseCommonDao<UploadFileSetRef, String> {
 
-    /**
-     * 
-     * @param uploadFileSetInfoId
-     * @return
-     */
-    public List<UploadFileInfo> findByUploadSetId(String uploadFileSetInfoId) {
-        String hql = "select info from UploadFileSetRef ref,UploadFileInfo info where ref.uploadFileId = info.id and ref.uploadFilesetId = ?";
-        return find(hql, uploadFileSetInfoId);
-    }
-
-    /***
-     * 获得文件夹里面所有文件路径
-     * @param filesetId
-     * @return
-     */
-    public List<FileInfoDto> getFileInfo(String filesetId) {
-        String sql = " SELECT f.FILE_NAME fileName,f.file_type fileType,f.LOCATION location,f.url url,r.ID refId,r.UPLOAD_FILESET_INFO_ID filesetId,r.UPLOAD_FILE_INFO_ID fileId "
-                + " FROM upload_file_set_ref r LEFT JOIN "
-                + "upload_file_info f ON f.ID=r.UPLOAD_FILE_INFO_ID WHERE r.UPLOAD_FILESET_INFO_ID= :filesetId"
-                + " AND r.IS_OBSOLETE_DATE IS NULL and f.IS_OBSOLETE_DATE is null ORDER BY r.SORT_ORDER DESC,f.CREATED_ON DESC ";
-        //return (List<Map<String, Object>>) queryForMap(sql, filesetId);
-        Map<String, Object> params = Maps.newHashMap();
-        params.put("filesetId", filesetId);
-        return query (sql, FileInfoDto.class, params);
-    }
 
     /**
      * 移动图片位置
      * @author wuwenhao
      * @param moveId
      * @param repId
-     * @param position
      * @return
      */
     public Map<String, Object> moveUploadFile(String moveId, String repId) {
@@ -75,7 +44,7 @@ public class UploadFileSetRefDao extends BaseCommonDao<UploadFileSetRef, String>
         }
         Long repOrder = repSet.getSortOrder();
         Long moveOrder = moveSet.getSortOrder();
-        if (repOrder == moveOrder) { //防止相同的sortOrder起冲突
+        if (repOrder.equals( moveOrder)) { //防止相同的sortOrder起冲突
             moveOrder++;
         }
         moveSet.setSortOrder(repOrder);
