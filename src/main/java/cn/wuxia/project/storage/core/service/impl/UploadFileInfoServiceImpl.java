@@ -85,7 +85,7 @@ public class UploadFileInfoServiceImpl extends CommonServiceImpl<UploadFileInfo,
 
     @Override
     public void deleteFileInfoByLogical(String uploadFileInfoId) {
-        uploadFileInfoDao.deleteEntityById(uploadFileInfoId);
+        uploadFileInfoDao.deleteByLogical(uploadFileInfoId);
         uploadFileSetRefDao.deleteFile(uploadFileInfoId);
     }
 
@@ -119,7 +119,7 @@ public class UploadFileInfoServiceImpl extends CommonServiceImpl<UploadFileInfo,
         //保存文件夹
         UploadFileSetInfo uploadFileSetInfo = null;
         if (StringUtil.isNotBlank(newFileToSaveDTO.getUploadFileSetId())) {
-            uploadFileSetInfo = uploadFileSetInfoDao.getEntityById(newFileToSaveDTO.getUploadFileSetId());
+            uploadFileSetInfo = uploadFileSetInfoDao.findByIdIncludeLogicalDelete(newFileToSaveDTO.getUploadFileSetId());
         }
         if (null == uploadFileSetInfo) {
             uploadFileSetInfo = new UploadFileSetInfo();

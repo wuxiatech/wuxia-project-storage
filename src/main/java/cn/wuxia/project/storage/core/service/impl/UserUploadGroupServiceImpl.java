@@ -4,25 +4,26 @@
 * Change History
 * Version       Date         Author           Reason
 * <Ver.No>     <date>        <who modify>       <reason>
-* Copyright 2014-2020 www.ibmall.cn All right reserved.
+* Copyright 2014-2020 wuxia.tech All right reserved.
 */
 package cn.wuxia.project.storage.core.service.impl;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
+import cn.wuxia.common.exception.AppDaoException;
+import cn.wuxia.common.exception.AppServiceException;
+import cn.wuxia.common.util.StringUtil;
+import cn.wuxia.project.common.dao.CommonDao;
+import cn.wuxia.project.common.service.impl.CommonServiceImpl;
+import cn.wuxia.project.storage.core.dao.UserUploadGroupDao;
 import cn.wuxia.project.storage.core.model.UserUploadGroup;
 import cn.wuxia.project.storage.core.model.UserUploadGroupRef;
+import cn.wuxia.project.storage.core.service.UserUploadGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import cn.wuxia.project.storage.core.dao.UserUploadGroupDao;
-import cn.wuxia.project.storage.core.service.UserUploadGroupService;
-import cn.wuxia.project.common.dao.CommonDao;
-import cn.wuxia.project.common.service.impl.CommonServiceImpl;
-import cn.wuxia.common.util.StringUtil;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -51,7 +52,11 @@ public class UserUploadGroupServiceImpl extends CommonServiceImpl<UserUploadGrou
             for (UserUploadGroupRef ref : refList) {
                 ref.setGroupId(UserUploadGroup.DEFAULTGROUP);
             }
-            userUploadGroupRefServiceImpl.batchSave(new HashSet<>(refList));
+            try {
+                userUploadGroupRefServiceImpl.batchSave(new HashSet<>(refList));
+            } catch (AppDaoException e) {
+               throw new AppServiceException("保存失败");
+            }
             userUploadGroupDao.delete(groupId);
             return true;
         }

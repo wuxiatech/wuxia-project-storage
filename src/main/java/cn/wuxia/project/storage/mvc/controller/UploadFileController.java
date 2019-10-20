@@ -3,6 +3,7 @@
  */
 package cn.wuxia.project.storage.mvc.controller;
 
+import cn.wuxia.common.exception.AppDaoException;
 import cn.wuxia.common.exception.AppWebException;
 import cn.wuxia.common.util.FileUtil;
 import cn.wuxia.common.util.JsonUtil;
@@ -154,7 +155,11 @@ public class UploadFileController extends BaseController {
                 } else {
                     gorupRef.setGroupId(UserUploadGroup.DEFAULTGROUP);
                 }
-                userUploadGroupRefService.save(gorupRef);
+                try {
+                    userUploadGroupRefService.save(gorupRef);
+                } catch (AppDaoException e) {
+                    throw new AppWebException("上传失败");
+                }
             }
             return result;
         } else if (StringUtil.equals("listimage", action)) {
@@ -199,7 +204,11 @@ public class UploadFileController extends BaseController {
                 } else {
                     gorupRef.setGroupId(UserUploadGroup.DEFAULTGROUP);
                 }
-                userUploadGroupRefService.save(gorupRef);
+                try {
+                    userUploadGroupRefService.save(gorupRef);
+                } catch (AppDaoException e) {
+                    throw new AppWebException("上传失败");
+                }
             }
             return result;
         } else if (StringUtil.equals("uploadvideo", action)) {
@@ -228,7 +237,11 @@ public class UploadFileController extends BaseController {
                 } else {
                     gorupRef.setGroupId(UserUploadGroup.DEFAULTGROUP);
                 }
-                userUploadGroupRefService.save(gorupRef);
+                try {
+                    userUploadGroupRefService.save(gorupRef);
+                } catch (AppDaoException e) {
+                    throw new AppWebException("上传失败");
+                }
             }
             return result;
         } else {
