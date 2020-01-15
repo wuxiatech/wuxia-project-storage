@@ -3,6 +3,7 @@
  */
 package cn.wuxia.project.storage.core.service.impl;
 
+import cn.wuxia.common.exception.AppDaoException;
 import cn.wuxia.common.exception.AppServiceException;
 import cn.wuxia.common.util.DateUtil;
 import cn.wuxia.common.util.FileUtil;
@@ -108,14 +109,22 @@ public class UploadFileInfoServiceImpl extends CommonServiceImpl<UploadFileInfo,
     public void updateByUploadId(String fileName, String uploadFileInfoId) {
         UploadFileInfo u = uploadFileInfoDao.get(uploadFileInfoId);
         u.setFileName(fileName);
-        uploadFileInfoDao.save(u);
+        try {
+            save(u);
+        } catch (AppDaoException e) {
+            throw new AppServiceException(e.getMessage());
+        }
     }
 
     @Override
     public void saveNewUploadFile(NewFileToSaveDTO newFileToSaveDTO) {
         UploadFileInfo uploadFileInfo = new UploadFileInfo();
         BeanUtil.copyPropertiesWithoutNullValues(uploadFileInfo, newFileToSaveDTO);
-        uploadFileInfoDao.save(uploadFileInfo);
+        try {
+            save(uploadFileInfo);
+        } catch (AppDaoException e) {
+            throw new AppServiceException(e.getMessage());
+        }
         //保存文件夹
         UploadFileSetInfo uploadFileSetInfo = null;
         if (StringUtil.isNotBlank(newFileToSaveDTO.getUploadFileSetId())) {

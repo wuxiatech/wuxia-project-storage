@@ -18,6 +18,7 @@ import cn.wuxia.project.storage.upload.bean.UploadRespone;
 import cn.wuxia.project.storage.upload.service.UploadHandler;
 import org.apache.commons.io.FilenameUtils;
 import org.nutz.lang.Stopwatch;
+import org.nutz.lang.random.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,14 +48,17 @@ public class FileUploadService {
     /**
      * 文件存储起始路径
      */
-    protected final static String DRIVER_URL = InitializationFile.driveUrl;
-
+    private final static String DRIVER_URL = InitializationFile.driveUrl;
 
     public FileUploadBean uploadFile(String httpUrl, UploadFileCategoryEnum uploadCategory) throws HttpClientException, UploadException {
+        return uploadFile(httpUrl, uploadCategory, null);
+    }
+
+    public FileUploadBean uploadFile(String httpUrl, UploadFileCategoryEnum uploadCategory, String uploadFileSetId) throws HttpClientException, UploadException {
         //生成URL对象
         InputStream inputStream = HttpClientUtil.download(httpUrl);
         //保存文件的信息入数据库
-        return uploadFile(inputStream, httpUrl, uploadCategory == null ? UploadFileCategoryEnum.temp : uploadCategory, null);
+        return uploadFile(inputStream, httpUrl, uploadCategory, uploadFileSetId);
     }
 
     public FileUploadBean uploadFile(File uploadFile, UploadFileCategoryEnum uploadCategory, String uploadFileSetId) throws UploadException {
@@ -65,8 +69,11 @@ public class FileUploadService {
         }
     }
 
+    public FileUploadBean uploadFile(byte[] bytes, String fileName, UploadFileCategoryEnum fileCategoryEnum) throws UploadException {
+        return uploadFile(bytes, fileName, fileCategoryEnum, null);
+    }
 
-    public FileUploadBean uploadFile(byte[] bytes, String fileName, UploadFileCategoryEnum ufce) throws UploadException {
+    public FileUploadBean uploadFile(byte[] bytes, String fileName, UploadFileCategoryEnum fileCategoryEnum, String uploadFileSetId) throws UploadException {
         logger.info("根据字节和文件名上传文件开始。。。。");
         if (null == bytes || bytes.length <= 0) {
             logger.info("根据字节和文件名上传文件失败，文件字节为空。。。。");
@@ -77,10 +84,18 @@ public class FileUploadService {
             logger.info("根据字节和文件名上传文件失败，文件名为空。。。。");
             throw new UploadException("根据字节和文件名上传文件失败，文件名为空。。。。");
         }
-        return uploadFile(new ByteArrayInputStream(bytes), fileName, ufce, null);
+        return uploadFile(new ByteArrayInputStream(bytes), fileName, fileCategoryEnum, uploadFileSetId);
+    }
+
+    public FileUploadBean uploadFile(InputStream inputStream, String fileName, UploadFileCategoryEnum uploadCategory) throws UploadException {
+        return uploadFile(inputStream, fileName, uploadCategory, null);
     }
 
     public FileUploadBean uploadFile(InputStream inputStream, String fileName, UploadFileCategoryEnum uploadCategory, String uploadFileSetId) throws UploadException {
+        return uploadFile(inputStream, fileName, uploadCategory, uploadFileSetId, InitializationFile.isPutToAliOss, InitializationFile.isPutToQiniuOss);
+    }
+
+    public FileUploadBean uploadFile(InputStream inputStream, String fileName, UploadFileCategoryEnum uploadCategory, String uploadFileSetId, boolean alioss, boolean qiniuoss) throws UploadException {
         Stopwatch sw = Stopwatch.begin();
         logger.info("#################Start Upload {}########################", fileName);
         final String fileType = FilenameUtils.getExtension(fileName);
@@ -99,11 +114,11 @@ public class FileUploadService {
         /**
          * 新名字
          */
-        final String newFileName = StringUtil.random(6) + (StringUtil.isBlank(fileType) ? "" : "." + fileType);
+        final String newFileName = R.sg(8).next() + (StringUtil.isBlank(fileType) ? "" : "." + fileType);
         /**
          * 新文件保存的路径
          */
-        final String fileSaveDir = uploadCategory + File.separator + DateUtil.dateToString(new Date(), "yyyy/MM/dd");
+        final String fileSaveDir = uploadCategory + File.separator + DateUtil.dateToString(new Date(), "yyMMdd");
         /**
          * 新文件的全路径
          */
@@ -114,11 +129,11 @@ public class FileUploadService {
             logger.debug("###############OriginalFilename:" + fileName);
             logger.debug("###############NewFileName:" + newFileName);
         }
-        FileUploadBean fileUploadBean = null;
+
         /**
          * 如果是存储在本地
          */
-        if (!InitializationFile.isPutToAliOss && !InitializationFile.isPutToQiniuOss) {
+        if (!alioss && !qiniuoss) {
             try {
                 final String localFileSaveDir = DRIVER_URL + File.separator + fileSaveDir;
                 File f = FileUtil.getFile(localFileSaveDir);
@@ -133,7 +148,7 @@ public class FileUploadService {
                 throw new UploadException("Upload File Error:", exception);
             }
         }
-        fileUploadBean = new FileUploadBean();
+        FileUploadBean fileUploadBean = new FileUploadBean();
         fileUploadBean.setOldFileName(oldFileName);
         fileUploadBean.setNewFileName(newFileName);
         fileUploadBean.setContentType(new MimetypesFileTypeMap().getContentType(fileName));
@@ -153,10 +168,7 @@ public class FileUploadService {
             return fileUploadBean;
         }
 
-        // ----upload file-----end---
-
         // save FileUploadBean--begin--------------
-
         //保存图片
         NewFileToSaveDTO newFileToSaveDTO = new NewFileToSaveDTO();
         newFileToSaveDTO.setFileEncoding(fileUploadBean.getContentType());
@@ -166,9 +178,9 @@ public class FileUploadService {
         newFileToSaveDTO.setUploadFileSetId(uploadFileSetId);
         newFileToSaveDTO.setUploadFileCategory(uploadCategory);
         String downloadUrl = "";
-        logger.info("#################Start Upload########################");
         //判断是否保存到oss上，若需要保存到oss则把文件上传到oss
-        if (InitializationFile.isPutToAliOss) {
+        if (alioss) {
+            logger.info("#################Start Upload To Aliyun OSS ########################");
             UploadRespone uploadRespone = uploadHandler.uploadToAliOss(inputStream, fileAbsPath);
             newFileToSaveDTO.setBucketName(uploadHandler.getOssUploader().getConfig().getBucketName());
             newFileToSaveDTO.setEndpoint(uploadHandler.getOssUploader().getConfig().getEndpoint());
@@ -176,8 +188,10 @@ public class FileUploadService {
             newFileToSaveDTO.setLocation(File.separator + uploadRespone.getFilepath());
             newFileToSaveDTO.setMd5(uploadRespone.getMd5());
             downloadUrl = uploadRespone.getCdnurl();
-
-        } else if (InitializationFile.isPutToQiniuOss) {
+            logger.info("#################End Upload To Aliyun OSS, URL:{} ########################", downloadUrl);
+        }
+        if (qiniuoss) {
+            logger.info("#################Start Upload To Qiniu OSS ########################");
             UploadRespone uploadRespone = uploadHandler.uploadToQiniuOss(inputStream, fileAbsPath);
             newFileToSaveDTO.setBucketName(uploadHandler.getQiniuUploader().getConfig().getBucket());
             newFileToSaveDTO.setEndpoint(uploadHandler.getQiniuUploader().getConfig().getZone());
@@ -185,16 +199,19 @@ public class FileUploadService {
             newFileToSaveDTO.setLocation(File.separator + uploadRespone.getFilepath());
             newFileToSaveDTO.setMd5(uploadRespone.getMd5());
             downloadUrl = uploadRespone.getCdnurl();
-        } else {
+            logger.info("#################End Upload To Aliyun OSS, URL:{} ########################", downloadUrl);
+        }
+        if (!alioss && !qiniuoss) {
             newFileToSaveDTO.setLocation(File.separator + fileAbsPath);
             newFileToSaveDTO.setUrl(InitializationFile.downloadUrl + newFileToSaveDTO.getLocation());
+            logger.info("#################End Upload To Location, URL:{} ########################", newFileToSaveDTO.getUrl());
         }
-
 
         uploadFileService.saveNewUploadFile(newFileToSaveDTO);
 
         fileUploadBean.setDownloadUrl(downloadUrl);
         fileUploadBean.setUploadFileInfoId(newFileToSaveDTO.getId());
+        fileUploadBean.setUploadFileSetInfoId(newFileToSaveDTO.getUploadFileSetId());
         fileUploadBean.setFileMD5(newFileToSaveDTO.getMd5());
         // save FileUploadBean--end--------------
         sw.stop();

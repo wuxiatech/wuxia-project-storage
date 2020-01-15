@@ -16,6 +16,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * @author songlin
+ */
 public class FileTools {
     public static InputStream getInputStream(UploadFileInfo uploadFileInfo) throws IOException {
         try {
