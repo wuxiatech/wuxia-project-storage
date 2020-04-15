@@ -145,7 +145,7 @@ public class UploadFileInfoServiceImpl extends CommonServiceImpl<UploadFileInfo,
         uploadFileSetRefDao.save(uploadFileSetRef);
 
         newFileToSaveDTO.setUploadFileSetId(uploadFileSetInfo.getId());
-        newFileToSaveDTO.setId(uploadFileSetInfo.getId());
+        newFileToSaveDTO.setId(uploadFileInfo.getId());
     }
 
 

@@ -62,7 +62,7 @@ public class UploadFileSetRefDao extends BaseCommonDao<UploadFileSetRef, String>
      */
     public void deleteFile(String fileInfoId){
         String hql = "delete from UploadFileSetRef where uploadFileId=?";
-        batchExecute(hql);
+        batchExecute(hql, fileInfoId);
     }
     
     

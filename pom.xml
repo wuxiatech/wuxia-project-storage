@@ -5,11 +5,11 @@
     <parent>
         <groupId>cn.wuxia.project</groupId>
         <artifactId>wuxia.project-parent</artifactId>
-        <version>2.4.2</version>
+        <version>2.4.3</version>
     </parent>
     <groupId>cn.wuxia.project</groupId>
     <artifactId>wuxia.project-storage</artifactId>
-    <version>2.4.2</version>
+    <version>2.4.3.2</version>
     <name>Project Storage</name>
     <packaging>jar</packaging>
     <url>https://github.com/wuxiatech/wuxia-project-storage</url>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>cn.wuxia.project</groupId>
             <artifactId>wuxia.project-core</artifactId>
-            <version>[2.4.2,)</version>
+            <version>2.4.3</version>
         </dependency>
         <dependency>
             <groupId>cn.wuxia.common</groupId>

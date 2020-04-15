@@ -41,8 +41,6 @@ public class QiniuTest {
 
     @Test
     public void test0() throws Exception {
-//        OSSUtils ossUtils = new OSSUtils("oss-cn-shenzhen.aliyuncs.com", "LTAIBvTZ87DQZZrR", "whpaRiBfVj0YmhhbhglJNBBQM553bL");
-//        Map map = ossUtils.putObject("img-www", "def/", "efg.png", new File("/Users/songlin/Desktop/tongguheren.png"));
         OssUploader ossUploader = OssUploader.build();
         Map key = ossUploader.upload(new File("/Users/songlin/Desktop/tongguheren.png"), "abc.png");
         System.out.println(key);
