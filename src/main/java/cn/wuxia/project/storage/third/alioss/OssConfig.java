@@ -4,6 +4,8 @@
 package cn.wuxia.project.storage.third.alioss;
 
 import cn.wuxia.common.util.PropertiesUtils;
+import cn.wuxia.project.storage.upload.UploadException;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
@@ -16,6 +18,7 @@ import java.util.Properties;
  * @author songlin.li
  * @since 2018-11-22
  */
+@Data
 public class OssConfig {
     private static final Logger logger = LoggerFactory.getLogger(OssConfig.class);
 
@@ -31,11 +34,17 @@ public class OssConfig {
     //oss bucket
     private String bucketName;
 
-
-    // 初始化各个文件夹
-    public static OssConfig buildFromProperties() {
+    public static OssConfig buildFromProperties() throws UploadException {
         final Properties propertie = PropertiesUtils.loadProperties("classpath:properties/oss.default.properties",
                 "classpath:oss.config.properties");
+        return buildFromProperties(propertie);
+    }
+
+    // 初始化各个文件夹
+    public static OssConfig buildFromProperties(Properties propertie) throws UploadException {
+        if(propertie == null){
+            throw new UploadException("properties不能为空");
+        }
         //oss站点
         String endpoint = propertie.getProperty("endpoint");
 
@@ -60,38 +69,5 @@ public class OssConfig {
         ossConfig.setBucketName(bucketName);
         return ossConfig;
 
-    }
-
-
-    public String getEndpoint() {
-        return endpoint;
-    }
-
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public String getAccessKeyId() {
-        return accessKeyId;
-    }
-
-    public void setAccessKeyId(String accessKeyId) {
-        this.accessKeyId = accessKeyId;
-    }
-
-    public String getAccessKeySecret() {
-        return accessKeySecret;
-    }
-
-    public void setAccessKeySecret(String accessKeySecret) {
-        this.accessKeySecret = accessKeySecret;
-    }
-
-    public String getBucketName() {
-        return bucketName;
-    }
-
-    public void setBucketName(String bucketName) {
-        this.bucketName = bucketName;
     }
 }

@@ -53,8 +53,7 @@ public class UploadFileInfoServiceImpl extends CommonServiceImpl<UploadFileInfo,
     @Autowired
     private UploadFileSetRefDao uploadFileSetRefDao;
 
-    @Autowired
-    private UploadHandler uploadHandler;
+    private UploadHandler uploadHandler = new UploadHandler();
     /**
      * 文件存储起始路径
      */

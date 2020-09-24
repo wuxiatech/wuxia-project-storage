@@ -5,9 +5,11 @@ import cn.wuxia.common.util.DateUtil;
 import cn.wuxia.common.util.EncodeUtils;
 import cn.wuxia.common.util.PropertiesUtils;
 import cn.wuxia.common.util.StringUtil;
+import cn.wuxia.project.storage.upload.UploadException;
 import com.aliyun.oss.model.AccessControlList;
 import com.aliyun.oss.model.CannedAccessControlList;
 import com.qiniu.common.QiniuException;
+import lombok.Getter;
 import org.apache.commons.collections4.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,16 +23,13 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
+@Getter
 public class OssUploader {
     private final Logger logger = LoggerFactory.getLogger(OssUploader.class);
-    static Properties properties = PropertiesUtils.loadProperties("classpath:oss.config.properties", "classpath:properties/oss.config.properties");
-    public static String accessDomain = properties.getProperty("oss.domain");
+    private String accessDomain;
     private OSSUtils ossClient;
     private OssConfig config;
 
-    public OssUploader() {
-
-    }
 
     public OssUploader(OssConfig config) {
         this.config = config;
@@ -41,22 +40,19 @@ public class OssUploader {
         }
     }
 
-
-    public OssConfig getConfig() {
-        return config;
+    /**
+     * properties初始化方式
+     *
+     * @return
+     * @throws UploadException
+     */
+    public static OssUploader build() throws UploadException {
+        Properties properties = PropertiesUtils.loadProperties("classpath:oss.config.properties", "classpath:properties/oss.config.properties");
+        OssUploader ossUploader = new OssUploader(OssConfig.buildFromProperties(properties));
+        ossUploader.accessDomain = properties.getProperty("oss.domain");
+        return ossUploader;
     }
 
-    public void setConfig(OssConfig config) {
-        this.config = config;
-    }
-
-    public OssUploader init() {
-        return new OssUploader(OssConfig.buildFromProperties());
-    }
-
-    public static OssUploader build() {
-        return new OssUploader().init();
-    }
 
     /**
      * 上传文件
@@ -95,7 +91,7 @@ public class OssUploader {
     }
 
     public void delete(String filePath) {
-        getOssClient().deleteObject(getConfig().getBucketName(), filePath);
+        getOssClient().deleteObject(config.getBucketName(), filePath);
     }
 
     public OSSUtils getOssClient() {
@@ -112,7 +108,7 @@ public class OssUploader {
      * @param fileName
      * @return
      */
-    public static String url(String fileName) {
+    public String url(String fileName) {
         String encodedFileName = null;
         try {
             encodedFileName = URLEncoder.encode(fileName, "utf-8");
@@ -146,7 +142,7 @@ public class OssUploader {
             key = StringUtil.substringAfter(key, "/");
         }
 
-        String bucketName = getConfig().getBucketName();
+        String bucketName = config.getBucketName();
         AccessControlList acl = getOssClient().client.getBucketAcl(bucketName);
         URI uri = getOssClient().client.getEndpoint();
         String domainUri = uri.getScheme() + "://" + bucketName + "." + uri.getAuthority();
@@ -166,4 +162,6 @@ public class OssUploader {
         }
 
     }
+
+
 }

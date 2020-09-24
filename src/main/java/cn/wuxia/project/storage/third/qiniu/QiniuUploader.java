@@ -4,6 +4,7 @@ import cn.wuxia.common.util.DateUtil;
 import cn.wuxia.common.util.PropertiesUtils;
 import cn.wuxia.common.util.StringUtil;
 import cn.wuxia.project.storage.third.alioss.OssUploader;
+import cn.wuxia.project.storage.upload.UploadException;
 import com.google.gson.Gson;
 import com.qiniu.common.QiniuException;
 import com.qiniu.common.Zone;
@@ -14,6 +15,7 @@ import com.qiniu.storage.UploadManager;
 import com.qiniu.storage.model.DefaultPutRet;
 import com.qiniu.util.Auth;
 import com.qiniu.util.StringMap;
+import lombok.Getter;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -26,19 +28,20 @@ import java.net.URLEncoder;
 import java.util.Date;
 import java.util.Properties;
 
+/**
+ * @author songlin
+ */
+@Getter
 public class QiniuUploader {
     private final Logger logger = LoggerFactory.getLogger(OssUploader.class);
-    static Properties properties = PropertiesUtils.loadProperties("classpath:qiniu.config.properties", "classpath:properties/qiniu.config.properties");
-    public static String accessDomain = properties.getProperty("qiniu.domain");
-    public static boolean isPrivate = BooleanUtils.toBoolean(properties.getProperty("qiniu.bucket.private"));
+    private String accessDomain;
+    private boolean isPrivate;
+
     private UploadManager uploadManager;
     private BucketManager bucketManager;
     private QiniuConfig config;
     private Auth auth;
 
-    public QiniuUploader() {
-
-    }
 
     public QiniuUploader(QiniuConfig config) {
         this.config = config;
@@ -58,30 +61,19 @@ public class QiniuUploader {
         this.bucketManager = new BucketManager(auth, cfg);
     }
 
-
-    public UploadManager getUploadManager() {
-        return uploadManager;
-    }
-
-    public void setUploadManager(UploadManager uploadManager) {
-        this.uploadManager = uploadManager;
-    }
-
-
-    public QiniuConfig getConfig() {
-        return config;
-    }
-
-    public void setConfig(QiniuConfig config) {
-        this.config = config;
-    }
-
-    public QiniuUploader init() {
-        return new QiniuUploader(QiniuConfig.buildFromProperties());
-    }
-
-    public static QiniuUploader build() {
-        return new QiniuUploader().init();
+    /**
+     * 单列properties配置
+     *
+     * @return
+     * @throws UploadException
+     */
+    public static QiniuUploader build() throws UploadException {
+        Properties properties = PropertiesUtils.loadProperties("classpath:qiniu.config.properties", "classpath:properties/qiniu.config.properties");
+        QiniuConfig qiniuConfig = QiniuConfig.buildFromProperties(properties);
+        QiniuUploader qiniuUploader = new QiniuUploader(qiniuConfig);
+        qiniuUploader.accessDomain = properties.getProperty("qiniu.domain");
+        qiniuUploader.isPrivate = BooleanUtils.toBoolean(properties.getProperty("qiniu.bucket.private"));
+        return qiniuUploader;
     }
 
     /**
@@ -221,7 +213,7 @@ public class QiniuUploader {
      * @param fileName
      * @return
      */
-    public static String url(String fileName) {
+    public String url(String fileName) {
         String encodedFileName = fileName;
         try {
             encodedFileName = URLEncoder.encode(fileName, "utf-8").replace("+", "%20");
@@ -260,5 +252,22 @@ public class QiniuUploader {
         } else {
             return auth.privateDownloadUrl(accessDomain + "/" + key, expires);
         }
+    }
+
+
+    public String getAccessDomain() {
+        return accessDomain;
+    }
+
+    public void setAccessDomain(String accessDomain) {
+        this.accessDomain = accessDomain;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean aPrivate) {
+        isPrivate = aPrivate;
     }
 }

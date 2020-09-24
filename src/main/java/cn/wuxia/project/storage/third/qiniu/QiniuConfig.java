@@ -2,10 +2,13 @@ package cn.wuxia.project.storage.third.qiniu;
 
 import cn.wuxia.common.util.PropertiesUtils;
 import cn.wuxia.common.util.StringUtil;
+import cn.wuxia.project.storage.upload.UploadException;
 import com.qiniu.common.Zone;
+import lombok.Data;
 
 import java.util.Properties;
 
+@Data
 public class QiniuConfig {
 
     //...生成上传凭证，然后准备上传
@@ -29,10 +32,9 @@ public class QiniuConfig {
         this.secretKey = secretKey;
     }
 
-    public static QiniuConfig buildFromProperties() {
-        Properties properties = PropertiesUtils.loadProperties("classpath:qiniu.config.properties", "classpath:properties/qiniu.config.properties");
+    public static QiniuConfig buildFromProperties(Properties properties) throws UploadException {
         if (properties == null) {
-            return null;
+            throw new UploadException("properties不能为空");
         }
         QiniuConfig qiniuConfig = new QiniuConfig();
         qiniuConfig.setAccessKey(properties.getProperty("qiniu.accessKey"));
@@ -53,35 +55,9 @@ public class QiniuConfig {
         return qiniuConfig;
     }
 
-    public String getAccessKey() {
-        return accessKey;
+    public static QiniuConfig buildFromProperties() throws UploadException {
+        Properties properties = PropertiesUtils.loadProperties("classpath:qiniu.config.properties", "classpath:properties/qiniu.config.properties");
+        return buildFromProperties(properties);
     }
 
-    public void setAccessKey(String accessKey) {
-        this.accessKey = accessKey;
-    }
-
-    public String getSecretKey() {
-        return secretKey;
-    }
-
-    public void setSecretKey(String secretKey) {
-        this.secretKey = secretKey;
-    }
-
-    public String getBucket() {
-        return bucket;
-    }
-
-    public void setBucket(String bucket) {
-        this.bucket = bucket;
-    }
-
-    public String getZone() {
-        return zone;
-    }
-
-    public void setZone(String zone) {
-        this.zone = zone;
-    }
 }

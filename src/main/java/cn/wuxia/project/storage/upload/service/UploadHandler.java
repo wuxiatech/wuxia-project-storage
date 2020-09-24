@@ -6,21 +6,31 @@ import cn.wuxia.project.storage.third.qiniu.QiniuUploader;
 import cn.wuxia.project.storage.upload.UploadException;
 import cn.wuxia.project.storage.upload.bean.UploadRespone;
 import com.qiniu.common.QiniuException;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.Map;
 
-@Component
+/**
+ * @author songlin
+ */
 @Slf4j
+@NoArgsConstructor
 public class UploadHandler {
 
     OssUploader ossUploader;
     QiniuUploader qiniuUploader;
 
+    public UploadHandler(OssUploader ossUploader) {
+        this.ossUploader = ossUploader;
+    }
+
+    public UploadHandler(QiniuUploader qiniuUploader) {
+        this.qiniuUploader = qiniuUploader;
+    }
 
     public UploadRespone uploadToAliOss(File file, String fileSavePath) throws UploadException {
         if (ossUploader == null) {
@@ -72,7 +82,7 @@ public class UploadHandler {
         }
         try {
             String key = qiniuUploader.upload(file, fileSavePath);
-            return new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
+            return new UploadRespone(key, qiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
         } catch (QiniuException e) {
             throw new UploadException(e.getMessage());
         }
@@ -93,7 +103,7 @@ public class UploadHandler {
         }
         try {
             String key = qiniuUploader.uploadForce(file, fileSavePath);
-            return new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
+            return new UploadRespone(key, qiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
         } catch (QiniuException e) {
             throw new UploadException(e.getMessage());
         }
@@ -111,7 +121,7 @@ public class UploadHandler {
         }
         try {
             String key = qiniuUploader.uploadForce(file, fileSavePath, replaceOriginalFileKey);
-            return new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
+            return new UploadRespone(key, qiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
         } catch (QiniuException e) {
             throw new UploadException(e.getMessage());
         }
@@ -132,7 +142,7 @@ public class UploadHandler {
         try {
             String key = qiniuUploader.upload(new ByteArrayInputStream(outputStream.toByteArray()), fileSavePath);
 
-            UploadRespone uploadRespone = new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
+            UploadRespone uploadRespone = new UploadRespone(key, qiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
             return uploadRespone;
         } catch (QiniuException e) {
             throw new UploadException(e.getMessage());
@@ -156,7 +166,7 @@ public class UploadHandler {
         try {
             String key = qiniuUploader.upload(new ByteArrayInputStream(outputStream.toByteArray()), fileSavePath);
 
-            UploadRespone uploadRespone = new UploadRespone(key, QiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
+            UploadRespone uploadRespone = new UploadRespone(key, qiniuUploader.url(key), qiniuUploader.privateDownloadUrl(key), qiniuUploader.getConfig().getBucket(), fileMD5);
             return uploadRespone;
         } catch (QiniuException e) {
             throw new UploadException(e.getMessage());

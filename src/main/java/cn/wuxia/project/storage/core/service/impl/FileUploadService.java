@@ -43,8 +43,7 @@ public class FileUploadService {
     @Autowired
     private UploadFileInfoService uploadFileService;
 
-    @Autowired
-    private UploadHandler uploadHandler;
+    private UploadHandler uploadHandler = new UploadHandler();
     /**
      * 文件存储起始路径
      */

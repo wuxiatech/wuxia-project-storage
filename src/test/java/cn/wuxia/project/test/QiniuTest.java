@@ -22,7 +22,7 @@ import java.util.Map;
 public class QiniuTest {
 
 
-    public static void main(String[] args) throws QiniuException, ClientException, InterruptedException {
+    public static void main(String[] args) throws QiniuException, ClientException, InterruptedException, UploadException {
         QiniuUploader qiniuUploader = QiniuUploader.build();
 //            String key = qiniuUploader.upload(new File("/Users/songlin/Desktop/tongguheren.png"), "abc.png");
 //            QiniuUploader.url(key);
